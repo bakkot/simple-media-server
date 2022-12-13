@@ -46,22 +46,22 @@ let mappings = {
 let app = express();
 
 for (let [name, dir] of Object.entries(dirs)) {
-  app.use('/' + name, express.static(dir));
+  app.use('/' + encodeURIComponent(name), express.static(dir));
 }
 
 app.get('/', (req, res) => {
   let title = 'Media';
   let listing = Object.keys(dirs).map(x => 
-    `<span class='item'>${folderIcon} <a href="${san(`${x}`)}">${x}</a></span>`
+    `<span class='item'>${folderIcon} <a href="${san(x)}/">${x}</a></span>`
   ).join('<br>');
   res.send(page({ title: 'Media', body: `<h2>Media</h2>\n${listing}` }));
 });
 
 app.get('*', (req, res) => {
   let p = req.baseUrl + req.path;
-  let base = p.split('/')[1];
+  let base = decodeURIComponent(p.split('/')[1]);
   if (!dirs[base]) {
-    res.status(404).send('404 Not Found');
+    res.status(404).send('404 Not Found (1)');
     return;
   }
   let dir = dirs[base];
@@ -76,7 +76,7 @@ app.get('*', (req, res) => {
   }
 
   if (!fs.existsSync(fullPath)) {
-    res.status(404).send('404 Not Found');
+    res.status(404).send('404 Not Found (2)');
     return;
   }
 
@@ -127,24 +127,26 @@ app.get('*', (req, res) => {
     contents.sort((a, b) => a.name.localeCompare(b.name, 'en', { numeric: true }));
     let listing = contents.map(x => {
       let icon = unknownIcon;
+      let v = san(x.name);
+      let href = v;
       if (x.isDirectory()) {
         icon = folderIcon;
+        href += '/';
       } else {
         let ext = path.extname(x.name);
         if (mappings[ext]) {
           icon = mappings[ext];
         }
       }
-      let v = san(x.name);
-      return `<span class='item'>${icon} <a href="${v}">${v}</a></span>`;
+      return `<span class='item'>${icon} <a href="${href}">${v}</a></span>`;
     }).join('<br>');
     let title = base;
     if (subdir) {
-      title += '/' + (subdir.endsWith('/') ? subdir.slice(0, -1) : '')
+      title += '/' + (subdir.endsWith('/') ? subdir.slice(0, -1) : subdir);
     }
     res.send(page({ title, body: `<h2>${title} <a href="..">↩</a></h2>\n<a href="?tar">${saveDirIcon} Download entire directory</a><br><br>\n${listing}` }));
   } else {
-    res.send('this should not be reachable');
+    res.status(404).send('404 Not Found (3)');
   }
 });
 
